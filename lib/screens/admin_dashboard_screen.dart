@@ -36,6 +36,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _isSelectionMode = false;
   final Set<String> _selectedProductIds = {};
 
+  // Chế độ xem: Lưới (Grid) hoặc Danh sách (List) tối ưu responsive
+  bool _isListView = false;
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -323,7 +326,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             final isDesktop = constraints.maxWidth >= 900;
 
             if (isDesktop) {
-              return _buildDesktopLayout(allProducts, displayedProducts, totalStock, isFirebase);
+              return _buildDesktopLayout(allProducts, displayedProducts, totalStock, isFirebase, constraints.maxWidth);
             } else {
               return _buildMobileAndroidLayout(allProducts, displayedProducts, totalStock, isFirebase);
             }
@@ -341,7 +344,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     List<Product> displayedProducts,
     int totalStock,
     bool isFirebase,
+    double screenWidth,
   ) {
+    final showRightPanel = screenWidth >= 1180;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Row(
@@ -361,13 +367,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 : _buildCenterContent(allProducts, displayedProducts, totalStock, isFirebase),
           ),
 
-          // 3. Panel bên phải (Admin Profile, Top Sản Phẩm, Cảnh Báo)
-          ClayRightPanel(
-            products: allProducts,
-            onEditProduct: _openProductDialog,
-            onAdjustStock: _handleAdjustStock,
-            onSeedData: _seedSampleData,
-          ),
+          // 3. Panel bên phải (Tự động thích ứng: chỉ hiện khi màn hình >= 1180px để không làm hẹp thẻ sản phẩm)
+          if (showRightPanel)
+            ClayRightPanel(
+              products: allProducts,
+              onEditProduct: _openProductDialog,
+              onAdjustStock: _handleAdjustStock,
+              onSeedData: _seedSampleData,
+            ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -534,14 +541,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ],
               ),
 
-              // Nút bật/tắt chế độ chọn nhiều để xóa hàng loạt (Nâng cao)
+              // Nút thao tác: Xóa đã chọn, Chọn nhiều & Đổi chế độ xem Lưới / Danh sách
               Row(
                 children: [
                   if (_isSelectionMode && _selectedProductIds.isNotEmpty)
                     TextButton.icon(
                       icon: const Icon(Icons.delete_sweep, color: AppColors.softRed, size: 18),
                       label: Text(
-                        'Xóa ${_selectedProductIds.length} mục đã chọn',
+                        'Xóa ${_selectedProductIds.length}',
                         style: const TextStyle(color: AppColors.softRed, fontWeight: FontWeight.bold),
                       ),
                       onPressed: _confirmDeleteSelected,
@@ -557,6 +564,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       });
                     },
                   ),
+                  const SizedBox(width: 8),
+
+                  // Nút chuyển đổi chế độ xem Lưới / Danh sách (Responsive tối ưu)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceWarm,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Tooltip(
+                          message: 'Xem dạng lưới',
+                          child: InkWell(
+                            onTap: () => setState(() => _isListView = false),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: !_isListView ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.grid_view_rounded, size: 16, color: !_isListView ? Colors.white : AppColors.textSecondary),
+                            ),
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Xem dạng danh sách hàng ngang',
+                          child: InkWell(
+                            onTap: () => setState(() => _isListView = true),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: _isListView ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.view_list_rounded, size: 16, color: _isListView ? Colors.white : AppColors.textSecondary),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -564,41 +615,76 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           const SizedBox(height: 12),
 
-          // Lưới hiển thị các thẻ sản phẩm Squircle
+          // Hiển thị sản phẩm theo Lưới (Grid) hoặc Danh sách (List) tối ưu khoảng trắng
           Expanded(
             child: displayedProducts.isEmpty
                 ? _buildEmptyState()
-                : GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      childAspectRatio: 0.68,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                    ),
-                    itemCount: displayedProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = displayedProducts[index];
-                      final isSelected = _selectedProductIds.contains(product.id);
+                : _isListView
+                    ? ListView.builder(
+                        itemCount: displayedProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = displayedProducts[index];
+                          final isSelected = _selectedProductIds.contains(product.id);
 
-                      return ClayProductCard(
-                        product: product,
-                        isSelectionMode: _isSelectionMode,
-                        isSelected: isSelected,
-                        onSelectChanged: (val) {
-                          setState(() {
-                            if (val == true) {
-                              if (product.id != null) _selectedProductIds.add(product.id!);
-                            } else {
-                              _selectedProductIds.remove(product.id);
-                            }
-                          });
+                          return ClayProductCard(
+                            product: product,
+                            isListView: true,
+                            isSelectionMode: _isSelectionMode,
+                            isSelected: isSelected,
+                            onSelectChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  if (product.id != null) _selectedProductIds.add(product.id!);
+                                } else {
+                                  _selectedProductIds.remove(product.id);
+                                }
+                              });
+                            },
+                            onEdit: () => _openProductDialog(product),
+                            onDelete: () => _confirmDelete(product),
+                            onAdjustStock: (delta) => _handleAdjustStock(product, delta),
+                          );
                         },
-                        onEdit: () => _openProductDialog(product),
-                        onDelete: () => _confirmDelete(product),
-                        onAdjustStock: (delta) => _handleAdjustStock(product, delta),
-                      );
-                    },
-                  ),
+                      )
+                    : LayoutBuilder(
+                        builder: (context, gridConstraints) {
+                          final availableWidth = gridConstraints.maxWidth;
+                          final crossAxisCount = (availableWidth / 210).floor().clamp(2, 4);
+
+                          return GridView.builder(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              childAspectRatio: 0.90, // Tỉ lệ chuẩn 0.90 loại bỏ hoàn toàn khoảng trắng thừa
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                            ),
+                            itemCount: displayedProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = displayedProducts[index];
+                              final isSelected = _selectedProductIds.contains(product.id);
+
+                              return ClayProductCard(
+                                product: product,
+                                isListView: false,
+                                isSelectionMode: _isSelectionMode,
+                                isSelected: isSelected,
+                                onSelectChanged: (val) {
+                                  setState(() {
+                                    if (val == true) {
+                                      if (product.id != null) _selectedProductIds.add(product.id!);
+                                    } else {
+                                      _selectedProductIds.remove(product.id);
+                                    }
+                                  });
+                                },
+                                onEdit: () => _openProductDialog(product),
+                                onDelete: () => _confirmDelete(product),
+                                onAdjustStock: (delta) => _handleAdjustStock(product, delta),
+                              );
+                            },
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -798,17 +884,57 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 'Danh Sách Sản Phẩm (${displayedProducts.length})',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    _isSelectionMode = !_isSelectionMode;
-                    if (!_isSelectionMode) _selectedProductIds.clear();
-                  });
-                },
-                child: Text(
-                  _isSelectionMode ? 'Hủy chọn' : 'Chọn nhiều',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isSelectionMode = !_isSelectionMode;
+                        if (!_isSelectionMode) _selectedProductIds.clear();
+                      });
+                    },
+                    child: Text(
+                      _isSelectionMode ? 'Hủy chọn' : 'Chọn nhiều',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Đổi chế độ xem trên mobile
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceWarm,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          onTap: () => setState(() => _isListView = false),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: !_isListView ? AppColors.primary : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(Icons.grid_view_rounded, size: 14, color: !_isListView ? Colors.white : AppColors.textSecondary),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => setState(() => _isListView = true),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: _isListView ? AppColors.primary : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(Icons.view_list_rounded, size: 14, color: _isListView ? Colors.white : AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -827,19 +953,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           const SizedBox(height: 12),
 
-          // Lưới sản phẩm dạng 2 cột trên Android
+          // Hiển thị sản phẩm tối ưu trên Android (Không khoảng trắng thừa)
           if (displayedProducts.isEmpty)
             _buildEmptyState()
-          else
-            GridView.builder(
+          else if (_isListView)
+            ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.65,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-              ),
               itemCount: displayedProducts.length,
               itemBuilder: (context, index) {
                 final product = displayedProducts[index];
@@ -847,6 +967,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                 return ClayProductCard(
                   product: product,
+                  isListView: true,
                   isSelectionMode: _isSelectionMode,
                   isSelected: isSelected,
                   onSelectChanged: (val) {
@@ -861,6 +982,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   onEdit: () => _openProductDialog(product),
                   onDelete: () => _confirmDelete(product),
                   onAdjustStock: (delta) => _handleAdjustStock(product, delta),
+                );
+              },
+            )
+          else
+            LayoutBuilder(
+              builder: (context, mobileConstraints) {
+                final isVerySmall = mobileConstraints.maxWidth < 360;
+
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isVerySmall ? 1 : 2,
+                    childAspectRatio: isVerySmall ? 1.35 : 0.88, // 0.88 tỉ lệ vàng gọn gàng không khoảng trắng
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: displayedProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = displayedProducts[index];
+                    final isSelected = _selectedProductIds.contains(product.id);
+
+                    return ClayProductCard(
+                      product: product,
+                      isListView: false,
+                      isSelectionMode: _isSelectionMode,
+                      isSelected: isSelected,
+                      onSelectChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            if (product.id != null) _selectedProductIds.add(product.id!);
+                          } else {
+                            _selectedProductIds.remove(product.id);
+                          }
+                        });
+                      },
+                      onEdit: () => _openProductDialog(product),
+                      onDelete: () => _confirmDelete(product),
+                      onAdjustStock: (delta) => _handleAdjustStock(product, delta),
+                    );
+                  },
                 );
               },
             ),

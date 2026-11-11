@@ -4,9 +4,8 @@ import 'package:intl/intl.dart';
 import '../../models/product_model.dart';
 import '../../theme/app_theme.dart';
 
-/// Card sản phẩm thiết kế theo phong cách Terracotta / Clay Squircle
-/// Hỗ trợ đầy đủ 4 trường: name, price, soluong, image
-/// Tích hợp tính năng nâng cao: Nút +/- điều chỉnh tồn kho nhanh 1-chạm
+/// Card sản phẩm tối ưu responsive cho môn Lập trình Đa nền tảng
+/// Loại bỏ hoàn toàn khoảng trắng thừa, bố cục gọn gàng, hỗ trợ cả Grid và List view.
 class ClayProductCard extends StatelessWidget {
   final Product product;
   final VoidCallback onEdit;
@@ -15,6 +14,7 @@ class ClayProductCard extends StatelessWidget {
   final bool isSelected;
   final ValueChanged<bool?>? onSelectChanged;
   final bool isSelectionMode;
+  final bool isListView;
 
   const ClayProductCard({
     super.key,
@@ -25,6 +25,7 @@ class ClayProductCard extends StatelessWidget {
     this.isSelected = false,
     this.onSelectChanged,
     this.isSelectionMode = false,
+    this.isListView = false,
   });
 
   Widget _buildImage({double? width, double? height, BoxFit fit = BoxFit.cover}) {
@@ -58,8 +59,8 @@ class ClayProductCard extends StatelessWidget {
             color: AppColors.surfaceWarm,
             child: const Center(
               child: SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
               ),
             ),
@@ -77,7 +78,7 @@ class ClayProductCard extends StatelessWidget {
       height: height,
       color: AppColors.surfaceWarm,
       child: const Center(
-        child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 32),
+        child: Icon(Icons.image_outlined, color: AppColors.textMuted, size: 28),
       ),
     );
   }
@@ -88,10 +89,142 @@ class ClayProductCard extends StatelessWidget {
     final isLowStock = product.soluong > 0 && product.soluong <= 5;
     final isOutOfStock = product.soluong == 0;
 
+    // ==========================================
+    // 1. DẠNG DANH SÁCH (LIST VIEW TỐI ƯU RESPONSIVE)
+    // ==========================================
+    if (isListView) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 3)),
+          ],
+        ),
+        child: Row(
+          children: [
+            if (isSelectionMode)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Checkbox(
+                  value: isSelected,
+                  activeColor: AppColors.primary,
+                  onChanged: onSelectChanged,
+                ),
+              ),
+
+            // Ảnh thu nhỏ bo góc
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 72,
+                height: 72,
+                child: _buildImage(),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Thông tin ở giữa
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Text(
+                        currencyFormatter.format(product.price),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isOutOfStock
+                              ? AppColors.softRedLight
+                              : isLowStock
+                                  ? AppColors.warmAmberLight
+                                  : AppColors.sageGreenLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isOutOfStock
+                              ? 'Hết hàng'
+                              : isLowStock
+                                  ? 'Sắp hết (${product.soluong})'
+                                  : 'Tồn: ${product.soluong}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isOutOfStock
+                                ? AppColors.softRed
+                                : isLowStock
+                                    ? AppColors.warmAmber
+                                    : AppColors.sageGreen,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Thao tác bên phải: Tăng/giảm kho + Sửa/Xóa
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildCompactStockTweak(),
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                  tooltip: 'Sửa',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: onEdit,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.softRed),
+                  tooltip: 'Xóa',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: onDelete,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ==========================================
+    // 2. DẠNG LƯỚI (GRID VIEW TỐI ƯU KHOẢNG TRẮNG)
+    // ==========================================
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isSelected ? AppColors.primary : Colors.transparent,
           width: isSelected ? 2 : 1,
@@ -99,8 +232,8 @@ class ClayProductCard extends StatelessWidget {
         boxShadow: const [
           BoxShadow(
             color: Color(0x0C000000),
-            blurRadius: 14,
-            offset: Offset(0, 4),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -110,41 +243,41 @@ class ClayProductCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Ảnh sản phẩm bo góc lớn
+              // 1. Ảnh sản phẩm chiếm tỉ lệ hợp lý (flex: 12)
               Expanded(
-                flex: 5,
+                flex: 12,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Container(
-                      margin: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.all(6),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(16),
                         child: _buildImage(),
                       ),
                     ),
                     // Badge số lượng tồn kho
                     Positioned(
-                      top: 14,
-                      right: 14,
+                      top: 10,
+                      right: 10,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: isOutOfStock
                               ? AppColors.softRed
                               : isLowStock
                                   ? AppColors.warmAmber
                                   : AppColors.sageGreen,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(12),
                           boxShadow: const [
-                            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 1)),
                           ],
                         ),
                         child: Text(
                           isOutOfStock ? 'Hết hàng' : 'SL: ${product.soluong}',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -154,135 +287,75 @@ class ClayProductCard extends StatelessWidget {
                 ),
               ),
 
-              // 2. Thông tin: Tên, Giá, Nút điều chỉnh kho nhanh
+              // 2. Thông tin + Thao tác gọn gàng không khoảng trắng thừa (flex: 10)
               Expanded(
-                flex: 5,
+                flex: 10,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 2, 14, 12),
+                  padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            product.name,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              height: 1.25,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            currencyFormatter.format(product.price),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
+                      // Tên sản phẩm
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
 
-                      // Tính năng nâng cao: Bộ nút tăng / giảm kho nhanh 1 chạm (+ / -)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceWarm.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Kho nhanh:',
-                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildStockBtn(
-                                  icon: Icons.remove,
-                                  enabled: product.soluong > 0,
-                                  onTap: () => onAdjustStock?.call(-1),
-                                  tooltip: 'Giảm 1 số lượng',
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  child: Text(
-                                    '${product.soluong}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                _buildStockBtn(
-                                  icon: Icons.add,
-                                  enabled: true,
-                                  onTap: () => onAdjustStock?.call(1),
-                                  tooltip: 'Tăng 1 số lượng',
-                                ),
-                              ],
-                            ),
-                          ],
+                      // Giá sản phẩm
+                      Text(
+                        currencyFormatter.format(product.price),
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
                         ),
                       ),
 
-                      // Hàng nút Sửa / Xóa
+                      // Hàng Thao tác gộp: Tăng/giảm kho + Nút Sửa, Xóa
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          InkWell(
-                            onTap: onEdit,
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceWarm,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.edit_outlined, size: 14, color: AppColors.textPrimary),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Sửa',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          // Tăng/giảm kho nhanh
+                          _buildCompactStockTweak(),
+
+                          // Nút Sửa & Xóa
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: onEdit,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceWarm,
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                ],
+                                  child: const Icon(Icons.edit_outlined, size: 14, color: AppColors.textPrimary),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          InkWell(
-                            onTap: onDelete,
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: AppColors.softRedLight,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.delete_outline, size: 14, color: AppColors.softRed),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Xóa',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.softRed),
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: onDelete,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.softRedLight,
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                ],
+                                  child: const Icon(Icons.delete_outline, size: 14, color: AppColors.softRed),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ],
                       ),
@@ -293,11 +366,11 @@ class ClayProductCard extends StatelessWidget {
             ],
           ),
 
-          // Checkbox chọn sản phẩm khi ở chế độ chọn hàng loạt
+          // Checkbox khi ở chế độ chọn nhiều
           if (isSelectionMode)
             Positioned(
-              top: 14,
-              left: 14,
+              top: 10,
+              left: 10,
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -317,6 +390,45 @@ class ClayProductCard extends StatelessWidget {
     );
   }
 
+  /// Khối tăng/giảm kho thu gọn [-] 12 [+]
+  Widget _buildCompactStockTweak() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWarm,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildStockBtn(
+            icon: Icons.remove,
+            enabled: product.soluong > 0,
+            onTap: () => onAdjustStock?.call(-1),
+            tooltip: 'Giảm 1',
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Text(
+              '${product.soluong}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 11.5,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          _buildStockBtn(
+            icon: Icons.add,
+            enabled: true,
+            onTap: () => onAdjustStock?.call(1),
+            tooltip: 'Tăng 1',
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStockBtn({
     required IconData icon,
     required bool enabled,
@@ -327,18 +439,18 @@ class ClayProductCard extends StatelessWidget {
       message: tooltip,
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         child: Container(
-          width: 24,
-          height: 24,
+          width: 20,
+          height: 20,
           decoration: BoxDecoration(
             color: enabled ? Colors.white : Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: enabled ? const [BoxShadow(color: Colors.black12, blurRadius: 2)] : null,
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: enabled ? const [BoxShadow(color: Colors.black12, blurRadius: 1)] : null,
           ),
           child: Icon(
             icon,
-            size: 14,
+            size: 12,
             color: enabled ? AppColors.textPrimary : Colors.grey,
           ),
         ),
