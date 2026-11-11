@@ -150,26 +150,21 @@ thigkdanentang/
 * **Chọn ảnh mẫu nhanh:** Tích hợp sẵn 8 ảnh mẫu sản phẩm công nghệ/thời trang chất lượng cao để test chức năng ngay tức thì.
 * **Xem trước ảnh (Preview):** Hiển thị ngay ảnh trước khi lưu.
 
-### 7. Các chức năng nâng cao (Tối ưu điểm số 1.5 điểm)
+### 7. Các chức năng nâng cao độc đáo (Tối ưu điểm số 1.5 điểm)
+* **Điều chỉnh tồn kho nhanh 1-chạm (+ / -):** Ngay trên thẻ mỗi sản phẩm, Admin có thể bấm nút `+` (nhập thêm 1 hàng) hoặc `-` (xuất bớt 1 hàng) mà không cần mở form sửa. Số lượng `soluong` được đồng bộ thời gian thực lên Firebase Firestore ngay lập tức.
+* **Xóa hàng loạt sản phẩm đã chọn (Batch Delete):** Cho phép bật chế độ *"Chọn nhiều"*, tích chọn các sản phẩm cần xóa và thực hiện xóa nhiều tài liệu cùng lúc với 1 lần xác nhận an toàn.
+* **Phân tích & Biểu đồ trực quan (Analytics & Charts):** Tab chuyên sâu thống kê:
+  - Tỷ lệ tồn kho dồi dào / sắp hết / đã hết hàng.
+  - Phân bổ theo phân khúc giá (Phổ thông < 5tr, Trung cấp 5-20tr, Cao cấp > 20tr).
+  - Tổng giá trị toàn bộ kho hàng (`sum(price * soluong)`).
 * **Tìm kiếm thời gian thực (Live Search):** Nhập ký tự vào ô tìm kiếm, danh sách sản phẩm tự động lọc theo `name` ngay lập tức.
-* **Lọc theo trạng thái tồn kho (Filter):**
-  - Tất cả sản phẩm.
-  - Còn hàng (`soluong > 0`).
-  - Sắp hết hàng (`soluong <= 5`).
-  - Hết hàng (`soluong == 0`).
-* **Sắp xếp linh hoạt (Sort):**
-  - Tên: A -> Z hoặc Z -> A.
-  - Giá: Thấp -> Cao hoặc Cao -> Thấp.
-  - Số lượng: Ít -> Nhiều hoặc Nhiều -> Ít.
-* **Bảng thống kê Dashboard (Stats Overview):**
-  - Thống kê tổng số loại sản phẩm.
-  - Thống kê tổng số lượng sản phẩm tồn trong kho (`sum(soluong)`).
-  - Thống kê tổng giá trị kho hàng (`sum(price * soluong)`).
-  - Thống kê số mặt hàng sắp hết hoặc hết hàng.
-* **Xuất CSDL JSON nộp bài (Export Database):**
-  - Nút bấm xuất toàn bộ dữ liệu CSDL ra định dạng JSON chuẩn (đúng 4 trường) có thể sao chép nhanh vào clipboard để nộp bài.
-* **Nạp dữ liệu mẫu ban đầu (Seed Sample Data):**
-  - Nạp 8 sản phẩm mẫu vào CSDL chỉ với 1 click chuột.
+* **Lọc đa tầng (Filter Chips & Category Tags):**
+  - Lọc theo phân loại trên Banner (Điện thoại, Laptop, Âm thanh).
+  - Lọc nhanh theo trạng thái: Còn hàng, Sắp hết (<= 5), Hết hàng (= 0).
+* **Sắp xếp linh hoạt 7 chế độ:** Tên A-Z, Tên Z-A, Giá tăng/giảm, Tồn kho tăng/giảm.
+* **Tương thích giao diện Android & Web hoàn hảo:**
+  - Trên Web/Desktop: Hiển thị Sidebar Terracotta bo góc cong, Banner chào mừng và Panel bên phải theo đúng phong cách Dribbble Clay hiện đại.
+  - Trên Android: Tự động chuyển đổi thành Bottom Navigation Bar bo góc cong mượt mà, hỗ trợ thao tác cảm ứng một tay dễ dàng.
 
 ---
 
