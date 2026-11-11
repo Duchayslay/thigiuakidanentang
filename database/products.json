@@ -1,0 +1,50 @@
+[
+  {
+    "name": "iPhone 15 Pro Max 256GB Titan Tự Nhiên",
+    "price": 29990000,
+    "soluong": 12,
+    "image": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "name": "MacBook Pro 14 M3 Pro 18GB/512GB Space Black",
+    "price": 49990000,
+    "soluong": 8,
+    "image": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "name": "Tai nghe Chống ồn Sony WH-1000XM5",
+    "price": 7990000,
+    "soluong": 25,
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "name": "Đồng hồ thông minh Apple Watch Series 9 GPS",
+    "price": 9890000,
+    "soluong": 18,
+    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "name": "Bàn phím cơ không dây Keychron K2 Pro QMK/VIA",
+    "price": 2450000,
+    "soluong": 30,
+    "image": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "name": "Chuột công thái học Logitech MX Master 3S",
+    "price": 2190000,
+    "soluong": 4,
+    "image": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "name": "Màn hình Dell UltraSharp 27 4K U2723QE IPS Black",
+    "price": 13990000,
+    "soluong": 6,
+    "image": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "name": "Loa Bluetooth Marshall Acton III",
+    "price": 6490000,
+    "soluong": 10,
+    "image": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=600&auto=format&fit=crop&q=80"
+  }
+]
