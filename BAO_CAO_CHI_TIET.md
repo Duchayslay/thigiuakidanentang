@@ -211,62 +211,42 @@ Nếu muốn liên kết với dự án Firebase riêng của bạn:
 
 ---
 
-## VII. NỘI DUNG FILE CƠ SỞ DỮ LIỆU NỘP BÀI (`products.json`)
+## VII. HƯỚNG DẪN XUẤT FILE CSDL FIREBASE RA JSON (BẰNG EXTENSION NHƯ YÊU CẦU ĐỀ BÀI)
 
-File được lưu tại đường dẫn: `database/products.json`
-Nội dung file cam kết CHỈ gồm 4 trường theo yêu cầu của đề:
+Để xuất toàn bộ dữ liệu collection `products` từ Firebase Console ra file JSON nộp bài theo đúng chuẩn minh họa của đề bài, thực hiện theo các bước sau:
+
+### 1. Cài đặt Extension "Firestore Export in One-click"
+* **Lưu ý về trình duyệt:** Extension này được phát hành trên Chrome Web Store (nền tảng Chromium). Do đó, hãy sử dụng **Google Chrome**, **Chromium**, **Microsoft Edge**, **Brave** hoặc **Cốc Cốc**. *(Nếu dùng Firefox, xem mục 4 bên dưới)*.
+* **Cách cài:**
+  1. Mở trang web: [https://firexport.dev](https://firexport.dev)
+  2. Bấm nút màu xanh **"Download for Chrome"** (sẽ chuyển đến Chrome Web Store).
+  3. Bấm **"Thêm vào Chrome"** (Add to Chrome) -> Xác nhận thêm tiện ích.
+  4. Sau khi cài, tiện ích hiển thị trong `chrome://extensions` với tên **"firestore export in one-click"**.
+
+### 2. Các bước xuất file JSON trên Firebase Console
+1. **Bước 1:** Đăng nhập vào [Firebase Console](https://console.firebase.google.com), chọn dự án của bạn.
+2. **Bước 2:** Ở thanh menu bên trái, nhấp vào **Firestore** (hoặc **Firestore Database**).
+3. **Bước 3:** Nhấp vào collection `products`. Ở góc phải khu vực hiển thị bảng dữ liệu (chỗ **Panel view**), chọn **"Query builder"**.
+4. **Bước 4:** Lúc này, extension sẽ tự động kích hoạt và hiển thị nút màu xanh **"Export"** tại khu vực **Query results** (như trong ảnh hướng dẫn).
+5. **Bước 5:** Bấm vào nút **"Export"** -> chọn định dạng **JSON** để tải file `products.json` về máy tính.
+
+### 3. Kiểm tra file JSON trước khi nộp
+Mở file vừa tải về và đảm bảo mỗi sản phẩm **CHỈ GỒM ĐÚNG 4 TRƯỜNG**:
 ```json
 [
   {
-    "name": "iPhone 15 Pro Max 256GB Titan Tự Nhiên",
-    "price": 29990000,
-    "soluong": 12,
-    "image": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&auto=format&fit=crop&q=80"
-  },
-  {
-    "name": "MacBook Pro 14 M3 Pro 18GB/512GB Space Black",
-    "price": 49990000,
-    "soluong": 8,
-    "image": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80"
-  },
-  {
-    "name": "Tai nghe Chống ồn Sony WH-1000XM5",
-    "price": 7990000,
-    "soluong": 25,
-    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80"
-  },
-  {
-    "name": "Đồng hồ thông minh Apple Watch Series 9 GPS",
-    "price": 9890000,
-    "soluong": 18,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80"
-  },
-  {
-    "name": "Bàn phím cơ không dây Keychron K2 Pro QMK/VIA",
-    "price": 2450000,
-    "soluong": 30,
-    "image": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600&auto=format&fit=crop&q=80"
-  },
-  {
-    "name": "Chuột công thái học Logitech MX Master 3S",
-    "price": 2190000,
-    "soluong": 4,
-    "image": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=600&auto=format&fit=crop&q=80"
-  },
-  {
-    "name": "Màn hình Dell UltraSharp 27 4K U2723QE IPS Black",
-    "price": 13990000,
-    "soluong": 6,
-    "image": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=600&auto=format&fit=crop&q=80"
-  },
-  {
-    "name": "Loa Bluetooth Marshall Acton III",
-    "price": 6490000,
-    "soluong": 10,
-    "image": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=600&auto=format&fit=crop&q=80"
+    "name": "...",
+    "price": ...,
+    "soluong": ...,
+    "image": "..."
   }
 ]
 ```
+*(File mẫu chuẩn đã được tạo sẵn tại thư mục `database/products.json` của dự án để đối chiếu).*
+
+### 4. Lưu ý khi sử dụng trình duyệt Firefox
+* **Vấn đề:** Firefox sử dụng kho tiện ích riêng (`addons.mozilla.org`) và khác biệt kiến trúc Manifest với Chrome Web Store, nên Firefox sẽ chặn việc cài trực tiếp extension từ trang `firexport.dev`.
+* **Khuyến nghị tốt nhất:** Dùng trình duyệt **Google Chrome** hoặc **Chromium** (đã có sẵn trên máy) để thực hiện bước xuất CSDL này nhằm đảm bảo tính ổn định, chụp ảnh màn hình nộp bài đúng chuẩn 100% theo giao diện của đề thi.
 
 ---
 
