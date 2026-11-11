@@ -126,6 +126,25 @@ class ProductService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 3.1. ĐIỀU CHỈNH TỒN KHO NHANH 1 CHẠM (+ / -)
+  /// Chức năng nâng cao cho phép tăng/giảm nhanh số lượng kho ngay trên giao diện
+  Future<void> adjustStock(Product product, int delta) async {
+    final newSoluong = (product.soluong + delta).clamp(0, 999999);
+    final updated = product.copyWith(soluong: newSoluong);
+    await updateProduct(updated);
+  }
+
+  /// 3.2. XÓA HÀNG LOẠT (BATCH DELETE)
+  /// Chức năng nâng cao cho phép xóa nhiều sản phẩm cùng lúc
+  Future<int> deleteBatch(List<String> ids) async {
+    int deleted = 0;
+    for (final id in ids) {
+      await deleteProduct(id);
+      deleted++;
+    }
+    return deleted;
+  }
+
   /// 4. NẠP DỮ LIỆU MẪU BAN ĐẦU VÀO FIREBASE
   /// Tiện ích hỗ trợ nạp nhanh dữ liệu vào CSDL Firebase chỉ bằng 1 nút bấm
   Future<int> seedSampleData() async {

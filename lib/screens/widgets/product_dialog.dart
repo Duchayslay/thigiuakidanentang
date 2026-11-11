@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/product_model.dart';
 import '../../services/sample_data.dart';
+import '../../theme/app_theme.dart';
 
 /// Hộp thoại Thêm / Sửa sản phẩm
 /// Nhập đầy đủ 4 trường: name, price, soluong, image
@@ -115,7 +116,7 @@ class _ProductDialogState extends State<ProductDialog> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.photo_library, color: Colors.deepPurple),
+                  Icon(Icons.photo_library, color: AppColors.primary),
                   SizedBox(width: 8),
                   Text(
                     'Chọn ảnh mẫu nhanh',
@@ -237,7 +238,7 @@ class _ProductDialogState extends State<ProductDialog> {
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.deepPurple.shade100),
+              border: Border.all(color: AppColors.primaryLight),
             ),
             child: imageWidget,
           ),
@@ -345,10 +346,10 @@ class _ProductDialogState extends State<ProductDialog> {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: Colors.deepPurple.shade50,
+                    backgroundColor: AppColors.primaryLight,
                     child: Icon(
                       isEditing ? Icons.edit_note : Icons.add_box,
-                      color: Colors.deepPurple,
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -563,10 +564,10 @@ class _ProductDialogState extends State<ProductDialog> {
                       _isLoading ? 'Đang lưu...' : (isEditing ? 'Cập nhật' : 'Thêm sản phẩm'),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     onPressed: _isLoading ? null : _handleSave,
                   ),

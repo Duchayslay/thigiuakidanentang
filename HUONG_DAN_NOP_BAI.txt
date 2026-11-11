@@ -1,0 +1,52 @@
+================================================================================
+                    TỔNG HỢP HỒ SƠ NỘP BÀI THI GIỮA KỲ / KẾT THÚC HỌC PHẦN
+                  HỌC PHẦN: PHÁT TRIỂN ỨNG DỤNG ĐA NỀN TẢNG (FLUTTER)
+================================================================================
+
+1. THÔNG TIN SINH VIÊN
+   - Họ và tên: [Điền họ và tên của bạn]
+   - Mã số sinh viên (MSSV): [Điền MSSV]
+   - Lớp học phần: [Điền lớp học phần]
+   - Đề tài: Xây dựng App quản lý sản phẩm Admin (Flutter & Firebase)
+
+2. CÁC ĐƯỜNG LINK NỘP BÀI THEO YÊU CẦU ĐỀ BÀI
+   - Link GitHub Source Code: https://github.com/[tai-khoan-cua-ban]/thigkdanentang
+     * Lệnh đẩy mã nguồn lên GitHub:
+       git remote add origin https://github.com/[tai-khoan-cua-ban]/thigkdanentang.git
+       git branch -M main
+       git push -u origin main
+
+   - Link Video Demo (Google Drive / YouTube): [Dán link video demo tại đây]
+
+3. CƠ SỞ DỮ LIỆU ĐÍNH KÈM (ĐÚNG 100% QUY ĐỊNH ĐỀ BÀI)
+   - Tên file: products.json (nằm trong thư mục database/products.json)
+   - Cấu trúc: Mỗi bản ghi CHỈ GỒM ĐÚNG 4 TRƯỜNG theo yêu cầu đề bài:
+     {
+       "name": "...",
+       "price": ...,
+       "soluong": ...,
+       "image": "..."
+     }
+     (Tuyệt đối không tự ý bổ sung thêm trường thừa)
+
+4. CẤU HÌNH FIREBASE FIRESTORE
+   - Dự án Firebase: thigk-danentang
+   - Collection CSDL: products
+   - Quy tắc Rules (Đảm bảo đã mở Test Mode để thầy cô chấm bài):
+     rules_version = '2';
+     service cloud.firestore {
+       match /databases/{database}/documents {
+         match /{document=**} {
+           allow read, write: if true;
+         }
+       }
+     }
+
+5. TÀI KHOẢN ĐĂNG NHẬP PHÂN HỆ ADMIN
+   - Email: admin@store.com
+   - Mật khẩu: admin123
+   (Hoặc bấm nút "Điền mẫu" trên giao diện đăng nhập)
+
+6. BÁO CÁO CHI TIẾT
+   - File: BAO_CAO_CHI_TIET.md (đã có đầy đủ lệnh cài thư viện, ảnh minh họa, hướng dẫn xuất CSDL bằng extension Firexport trên Firebase Console).
+================================================================================

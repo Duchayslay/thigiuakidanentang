@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
+import '../theme/app_theme.dart';
 import 'login_screen.dart';
+import 'widgets/analytics_view.dart';
+import 'widgets/clay_banner.dart';
+import 'widgets/clay_product_card.dart';
+import 'widgets/clay_right_panel.dart';
+import 'widgets/clay_sidebar.dart';
 import 'widgets/filter_bar.dart';
-import 'widgets/product_card.dart';
 import 'widgets/product_dialog.dart';
-import 'widgets/stats_overview.dart';
 
 /// Màn hình Quản trị Sản phẩm Chính (Admin Dashboard)
+/// Thiết kế giao diện phong cách Terracotta Clay cao cấp theo mẫu
+/// Hỗ trợ hoàn hảo cả Web (Desktop) và Android (Mobile)
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -20,10 +26,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final ProductService _productService = ProductService();
   final TextEditingController _searchController = TextEditingController();
 
+  int _currentNavIndex = 0; // 0: Kho hàng, 1: Thống kê, 2: Trạng thái, 3: Tài khoản
   String _searchQuery = '';
+  String _activeCategoryTag = 'Tất cả';
   SortOption _selectedSort = SortOption.defaultOrder;
   StockFilter _selectedFilter = StockFilter.all;
-  bool _isGridView = true;
+
+  // Tính năng nâng cao: Chế độ chọn nhiều sản phẩm xóa hàng loạt
+  bool _isSelectionMode = false;
+  final Set<String> _selectedProductIds = {};
 
   @override
   void dispose() {
@@ -40,24 +51,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         product: product,
         onSave: (savedProduct) async {
           if (product == null) {
-            // Thêm mới
             await _productService.addProduct(savedProduct);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Thêm sản phẩm mới thành công!'),
-                  backgroundColor: Colors.green,
+                  content: Text('Thêm sản phẩm mới vào Firebase thành công!'),
+                  backgroundColor: AppColors.sageGreen,
                 ),
               );
             }
           } else {
-            // Cập nhật
             await _productService.updateProduct(savedProduct);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Cập nhật sản phẩm thành công!'),
-                  backgroundColor: Colors.blue,
+                  backgroundColor: AppColors.primary,
                 ),
               );
             }
@@ -67,30 +76,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  /// Xác nhận xóa sản phẩm
+  /// Điều chỉnh số lượng kho nhanh 1-chạm (+ / -)
+  Future<void> _handleAdjustStock(Product product, int delta) async {
+    await _productService.adjustStock(product, delta);
+    if (mounted) {
+      final isAdd = delta > 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${isAdd ? "Nhập thêm" : "Xuất bớt"} $delta cái cho "${product.name}". Tồn kho mới: ${(product.soluong + delta).clamp(0, 999999)}',
+          ),
+          backgroundColor: isAdd ? AppColors.sageGreen : AppColors.warmAmber,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  /// Xác nhận xóa 1 sản phẩm
   void _confirmDelete(Product product) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            Icon(Icons.warning_amber_rounded, color: AppColors.softRed),
             SizedBox(width: 8),
-            Text('Xác nhận xóa'),
+            Text('Xác nhận xóa', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         content: Text(
-          'Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" khỏi cơ sở dữ liệu không?\n\nThao tác này không thể hoàn tác.',
+          'Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" khỏi cơ sở dữ liệu Firebase không?\n\nThao tác này không thể hoàn tác.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Hủy bỏ'),
+            child: const Text('Hủy bỏ', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.softRed,
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
@@ -101,7 +127,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Đã xóa "${product.name}" thành công!'),
-                      backgroundColor: Colors.red.shade700,
+                      backgroundColor: AppColors.softRed,
                     ),
                   );
                 }
@@ -114,19 +140,60 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  /// Xóa hàng loạt sản phẩm đã chọn (Chức năng nâng cao)
+  Future<void> _confirmDeleteSelected() async {
+    if (_selectedProductIds.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Xóa hàng loạt sản phẩm?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa ${_selectedProductIds.length} sản phẩm đã chọn khỏi CSDL Firebase?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.softRed, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Xóa ${_selectedProductIds.length} sản phẩm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final count = await _productService.deleteBatch(_selectedProductIds.toList());
+      setState(() {
+        _selectedProductIds.clear();
+        _isSelectionMode = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã xóa thành công $count sản phẩm đã chọn!'),
+            backgroundColor: AppColors.softRed,
+          ),
+        );
+      }
+    }
+  }
+
   /// Nạp danh sách sản phẩm mẫu vào CSDL
   Future<void> _seedSampleData() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nạp dữ liệu mẫu ban đầu?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Nạp 8 sản phẩm mẫu vào CSDL?', style: TextStyle(fontWeight: FontWeight.bold)),
         content: const Text(
           'Hệ thống sẽ thêm 8 sản phẩm mẫu chuẩn (gồm đúng 4 trường name, price, soluong, image) vào CSDL Firebase để phục vụ kiểm tra và chấm thi.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Nạp dữ liệu'),
           ),
@@ -140,7 +207,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Đã nạp thành công $count sản phẩm mẫu vào CSDL!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.sageGreen,
           ),
         );
       }
@@ -152,12 +219,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text('Đăng xuất'),
         content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi phân hệ quản trị?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.softRed, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Đăng xuất'),
           ),
@@ -185,7 +253,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       list = list.where((p) => p.name.toLowerCase().contains(q)).toList();
     }
 
-    // 2. Lọc theo trạng thái tồn kho
+    // 2. Lọc theo danh mục tag trên banner
+    if (_activeCategoryTag != 'Tất cả') {
+      final tag = _activeCategoryTag.toLowerCase();
+      list = list.where((p) {
+        final n = p.name.toLowerCase();
+        if (tag == 'điện thoại') return n.contains('iphone') || n.contains('samsung') || n.contains('phone');
+        if (tag == 'laptop') return n.contains('macbook') || n.contains('laptop') || n.contains('dell');
+        if (tag == 'âm thanh') return n.contains('tai nghe') || n.contains('loa') || n.contains('sony');
+        return true;
+      }).toList();
+    }
+
+    // 3. Lọc theo trạng thái tồn kho
     switch (_selectedFilter) {
       case StockFilter.inStock:
         list = list.where((p) => p.soluong > 0).toList();
@@ -200,7 +280,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         break;
     }
 
-    // 3. Sắp xếp
+    // 4. Sắp xếp
     switch (_selectedSort) {
       case SortOption.nameAsc:
         list.sort((a, b) => a.name.compareTo(b.name));
@@ -229,225 +309,723 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = AuthService();
     final isFirebase = _productService.isFirebaseAvailable;
 
+    return StreamBuilder<List<Product>>(
+      stream: _productService.streamProducts(),
+      builder: (context, snapshot) {
+        final allProducts = snapshot.data ?? [];
+        final displayedProducts = _filterAndSortProducts(allProducts);
+        final totalStock = allProducts.fold<int>(0, (sum, p) => sum + p.soluong);
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 900;
+
+            if (isDesktop) {
+              return _buildDesktopLayout(allProducts, displayedProducts, totalStock, isFirebase);
+            } else {
+              return _buildMobileAndroidLayout(allProducts, displayedProducts, totalStock, isFirebase);
+            }
+          },
+        );
+      },
+    );
+  }
+
+  // ==========================================
+  // 1. GIAO DIỆN DESKTOP / WEB (Như ảnh mẫu)
+  // ==========================================
+  Widget _buildDesktopLayout(
+    List<Product> allProducts,
+    List<Product> displayedProducts,
+    int totalStock,
+    bool isFirebase,
+  ) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        elevation: 1,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.storefront_rounded, color: Colors.deepPurple, size: 24),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Phân Hệ Quản Trị Admin',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    'Quản lý sản phẩm (name, price, soluong, image)',
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // Badge trạng thái Firebase
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: isFirebase ? Colors.green.shade50 : Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isFirebase ? Colors.green.shade300 : Colors.amber.shade400,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isFirebase ? Icons.cloud_done : Icons.cloud_queue,
-                  size: 14,
-                  color: isFirebase ? Colors.green.shade700 : Colors.amber.shade900,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isFirebase ? 'Firebase Online' : 'CSDL Sẵn Sàng',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isFirebase ? Colors.green.shade700 : Colors.amber.shade900,
-                  ),
-                ),
-              ],
-            ),
+      backgroundColor: AppColors.background,
+      body: Row(
+        children: [
+          // 1. Sidebar Terracotta phong cách Clay
+          ClaySidebar(
+            selectedIndex: _currentNavIndex,
+            onDestinationSelected: (idx) => setState(() => _currentNavIndex = idx),
+            onLogout: _handleLogout,
+            isFirebaseOnline: isFirebase,
           ),
 
-          // Nút Nạp dữ liệu mẫu
-          IconButton(
-            icon: const Icon(Icons.dataset_outlined),
-            tooltip: 'Nạp dữ liệu mẫu vào CSDL',
-            onPressed: _seedSampleData,
+          // 2. Nội dung Trung tâm
+          Expanded(
+            child: _currentNavIndex == 1
+                ? AnalyticsView(products: allProducts)
+                : _buildCenterContent(allProducts, displayedProducts, totalStock, isFirebase),
           ),
 
-          // Nút Đăng xuất
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            tooltip: 'Đăng xuất (${auth.userEmail})',
-            onPressed: _handleLogout,
+          // 3. Panel bên phải (Admin Profile, Top Sản Phẩm, Cảnh Báo)
+          ClayRightPanel(
+            products: allProducts,
+            onEditProduct: _openProductDialog,
+            onAdjustStock: _handleAdjustStock,
+            onSeedData: _seedSampleData,
           ),
         ],
       ),
-      body: StreamBuilder<List<Product>>(
-        stream: _productService.streamProducts(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final allProducts = snapshot.data ?? [];
-          final displayedProducts = _filterAndSortProducts(allProducts);
-
-          return CustomScrollView(
-            slivers: [
-              // 1. Thống kê tổng quan (Dashboard Stats)
-              SliverToBoxAdapter(
-                child: StatsOverview(products: allProducts),
-              ),
-
-              // 2. Thanh tìm kiếm, lọc, sắp xếp và đổi kiểu xem
-              SliverToBoxAdapter(
-                child: FilterBar(
-                  searchController: _searchController,
-                  onSearchChanged: (val) => setState(() => _searchQuery = val),
-                  selectedSort: _selectedSort,
-                  onSortChanged: (val) => setState(() => _selectedSort = val),
-                  selectedFilter: _selectedFilter,
-                  onFilterChanged: (val) => setState(() => _selectedFilter = val),
-                  isGridView: _isGridView,
-                  onViewChanged: (val) => setState(() => _isGridView = val),
-                ),
-              ),
-
-              // 3. Thanh hiển thị số lượng sản phẩm
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Text(
-                    'Hiển thị: ${displayedProducts.length} / ${allProducts.length} sản phẩm',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ),
-
-              // 4. Danh sách hoặc Lưới hiển thị Sản phẩm
-              if (displayedProducts.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? 'Không tìm thấy sản phẩm nào khớp với "$_searchQuery"'
-                              : 'Chưa có sản phẩm nào trong cơ sở dữ liệu',
-                          style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.add),
-                          label: const Text('Thêm sản phẩm đầu tiên'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepPurple,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () => _openProductDialog(),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_isGridView)
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: _calculateGridCrossAxisCount(context),
-                      childAspectRatio: 0.72,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final product = displayedProducts[index];
-                        return ProductCard(
-                          product: product,
-                          isGridView: true,
-                          onEdit: () => _openProductDialog(product),
-                          onDelete: () => _confirmDelete(product),
-                        );
-                      },
-                      childCount: displayedProducts.length,
-                    ),
-                  ),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = displayedProducts[index];
-                      return ProductCard(
-                        product: product,
-                        isGridView: false,
-                        onEdit: () => _openProductDialog(product),
-                        onDelete: () => _confirmDelete(product),
-                      );
-                    },
-                    childCount: displayedProducts.length,
-                  ),
-                ),
-
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 80),
-              ),
-            ],
-          );
-        },
-      ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_shopping_cart),
-        label: const Text('Thêm Sản Phẩm'),
+        elevation: 4,
+        icon: const Icon(Icons.add_shopping_cart_rounded),
+        label: const Text('Thêm Sản Phẩm', style: TextStyle(fontWeight: FontWeight.bold)),
         onPressed: () => _openProductDialog(),
       ),
     );
   }
 
-  int _calculateGridCrossAxisCount(BuildContext context) {
-    double width = MediaQuery.of(context).size.width;
-    if (width > 1200) return 4;
-    if (width > 850) return 3;
-    if (width > 550) return 2;
-    return 1;
+  Widget _buildCenterContent(
+    List<Product> allProducts,
+    List<Product> displayedProducts,
+    int totalStock,
+    bool isFirebase,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0E000000),
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Thanh trên cùng: Nút Thông báo + Ô tìm kiếm bo tròn
+          Row(
+            children: [
+              // Nút Chuông thông báo (như góc trên trái trong ảnh mẫu)
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceWarm,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.notifications_outlined, color: AppColors.primary, size: 22),
+                    Positioned(
+                      top: 10,
+                      right: 12,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.softRed,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+
+              // Ô Tìm kiếm bo tròn hiện đại
+              Expanded(
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: 'Tìm kiếm sản phẩm theo tên (name)...',
+                      hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          // Banner chính "Quản lý kho hàng" (như Autumn day trong ảnh)
+          ClayBanner(
+            totalProducts: allProducts.length,
+            totalStock: totalStock,
+            activeTag: _activeCategoryTag,
+            onTagSelected: (tag) => setState(() => _activeCategoryTag = tag),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Bộ lọc tồn kho nhanh & Sắp xếp
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip('Tất cả', StockFilter.all),
+                const SizedBox(width: 8),
+                _buildFilterChip('Còn hàng (> 0)', StockFilter.inStock),
+                const SizedBox(width: 8),
+                _buildFilterChip('Sắp hết (<= 5)', StockFilter.lowStock),
+                const SizedBox(width: 8),
+                _buildFilterChip('Hết hàng (= 0)', StockFilter.outOfStock),
+                const SizedBox(width: 14),
+                _buildSortDropdown(),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Hàng Tiêu đề mục "Sản Phẩm Trong Kho" (Day Schedule trong ảnh mẫu)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Sản Phẩm Trong Kho',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${displayedProducts.length} SP',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Nút bật/tắt chế độ chọn nhiều để xóa hàng loạt (Nâng cao)
+              Row(
+                children: [
+                  if (_isSelectionMode && _selectedProductIds.isNotEmpty)
+                    TextButton.icon(
+                      icon: const Icon(Icons.delete_sweep, color: AppColors.softRed, size: 18),
+                      label: Text(
+                        'Xóa ${_selectedProductIds.length} mục đã chọn',
+                        style: const TextStyle(color: AppColors.softRed, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _confirmDeleteSelected,
+                    ),
+                  TextButton.icon(
+                    icon: Icon(_isSelectionMode ? Icons.check_box : Icons.check_box_outline_blank, size: 16),
+                    label: Text(_isSelectionMode ? 'Hủy chọn' : 'Chọn nhiều'),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                    onPressed: () {
+                      setState(() {
+                        _isSelectionMode = !_isSelectionMode;
+                        if (!_isSelectionMode) _selectedProductIds.clear();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Lưới hiển thị các thẻ sản phẩm Squircle
+          Expanded(
+            child: displayedProducts.isEmpty
+                ? _buildEmptyState()
+                : GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      childAspectRatio: 0.68,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                    ),
+                    itemCount: displayedProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = displayedProducts[index];
+                      final isSelected = _selectedProductIds.contains(product.id);
+
+                      return ClayProductCard(
+                        product: product,
+                        isSelectionMode: _isSelectionMode,
+                        isSelected: isSelected,
+                        onSelectChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              if (product.id != null) _selectedProductIds.add(product.id!);
+                            } else {
+                              _selectedProductIds.remove(product.id);
+                            }
+                          });
+                        },
+                        onEdit: () => _openProductDialog(product),
+                        onDelete: () => _confirmDelete(product),
+                        onAdjustStock: (delta) => _handleAdjustStock(product, delta),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // 2. GIAO DIỆN DI ĐỘNG / ANDROID
+  // ==========================================
+  Widget _buildMobileAndroidLayout(
+    List<Product> allProducts,
+    List<Product> displayedProducts,
+    int totalStock,
+    bool isFirebase,
+  ) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Admin Kho Hàng',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+        actions: [
+          // Badge trạng thái kết nối Firebase
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isFirebase ? AppColors.sageGreenLight : AppColors.warmAmberLight,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isFirebase ? Icons.cloud_done : Icons.cloud_off,
+                  size: 13,
+                  color: isFirebase ? AppColors.sageGreen : AppColors.warmAmber,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  isFirebase ? 'Online' : 'Local',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isFirebase ? AppColors.sageGreen : AppColors.warmAmber,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.dataset_outlined, color: AppColors.textPrimary),
+            tooltip: 'Nạp dữ liệu mẫu',
+            onPressed: _seedSampleData,
+          ),
+        ],
+      ),
+
+      // Thân trang theo Tab được chọn
+      body: _currentNavIndex == 1
+          ? AnalyticsView(products: allProducts)
+          : _currentNavIndex == 2
+              ? _buildAccountTab(isFirebase)
+              : _buildMobileProductList(allProducts, displayedProducts, totalStock),
+
+      // Thanh điều hướng dưới đáy chuẩn Android (Curved Bottom Navigation)
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentNavIndex,
+          onDestinationSelected: (idx) => setState(() => _currentNavIndex = idx),
+          backgroundColor: Colors.white,
+          indicatorColor: AppColors.primaryLight,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded, color: AppColors.primary),
+              label: 'Kho Hàng',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.analytics_outlined),
+              selectedIcon: Icon(Icons.analytics_rounded, color: AppColors.primary),
+              label: 'Thống Kê',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person_rounded, color: AppColors.primary),
+              label: 'Tài Khoản',
+            ),
+          ],
+        ),
+      ),
+
+      floatingActionButton: _currentNavIndex == 0
+          ? FloatingActionButton(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.add),
+              onPressed: () => _openProductDialog(),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildMobileProductList(
+    List<Product> allProducts,
+    List<Product> displayedProducts,
+    int totalStock,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Banner trên Android
+          ClayBanner(
+            totalProducts: allProducts.length,
+            totalStock: totalStock,
+            activeTag: _activeCategoryTag,
+            onTagSelected: (tag) => setState(() => _activeCategoryTag = tag),
+          ),
+          const SizedBox(height: 14),
+
+          // Ô Tìm kiếm trên mobile
+          TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() => _searchQuery = val),
+            decoration: InputDecoration(
+              hintText: 'Tìm kiếm theo tên sản phẩm...',
+              prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Bộ lọc nhanh trên Mobile
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip('Tất cả', StockFilter.all),
+                const SizedBox(width: 6),
+                _buildFilterChip('Còn hàng', StockFilter.inStock),
+                const SizedBox(width: 6),
+                _buildFilterChip('Sắp hết', StockFilter.lowStock),
+                const SizedBox(width: 6),
+                _buildFilterChip('Hết hàng', StockFilter.outOfStock),
+                const SizedBox(width: 8),
+                _buildSortDropdown(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Tiêu đề danh sách
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Danh Sách Sản Phẩm (${displayedProducts.length})',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _isSelectionMode = !_isSelectionMode;
+                    if (!_isSelectionMode) _selectedProductIds.clear();
+                  });
+                },
+                child: Text(
+                  _isSelectionMode ? 'Hủy chọn' : 'Chọn nhiều',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+          if (_isSelectionMode && _selectedProductIds.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.delete_sweep, size: 16),
+                label: Text('Xóa ${_selectedProductIds.length} sản phẩm đã chọn'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.softRed),
+                onPressed: _confirmDeleteSelected,
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
+          // Lưới sản phẩm dạng 2 cột trên Android
+          if (displayedProducts.isEmpty)
+            _buildEmptyState()
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.65,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: displayedProducts.length,
+              itemBuilder: (context, index) {
+                final product = displayedProducts[index];
+                final isSelected = _selectedProductIds.contains(product.id);
+
+                return ClayProductCard(
+                  product: product,
+                  isSelectionMode: _isSelectionMode,
+                  isSelected: isSelected,
+                  onSelectChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        if (product.id != null) _selectedProductIds.add(product.id!);
+                      } else {
+                        _selectedProductIds.remove(product.id);
+                      }
+                    });
+                  },
+                  onEdit: () => _openProductDialog(product),
+                  onDelete: () => _confirmDelete(product),
+                  onAdjustStock: (delta) => _handleAdjustStock(product, delta),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountTab(bool isFirebase) {
+    final auth = AuthService();
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: AppColors.primaryLight,
+                  child: const Icon(Icons.person, color: AppColors.primary, size: 36),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Quản Trị Viên (Admin)',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        auth.userEmail.isNotEmpty ? auth.userEmail : 'admin@store.com',
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            tileColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            leading: Icon(
+              isFirebase ? Icons.cloud_done : Icons.cloud_off,
+              color: isFirebase ? AppColors.sageGreen : AppColors.warmAmber,
+            ),
+            title: const Text('Trạng thái CSDL Firebase'),
+            subtitle: Text(isFirebase ? 'Đã kết nối Cloud Firestore' : 'Chế độ lưu trữ cục bộ (Local Fallback)'),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            tileColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            leading: const Icon(Icons.dataset_outlined, color: AppColors.primary),
+            title: const Text('Nạp lại dữ liệu mẫu'),
+            subtitle: const Text('Khôi phục 8 sản phẩm mẫu chuẩn ban đầu'),
+            onTap: _seedSampleData,
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.logout),
+              label: const Text('Đăng Xuất Khỏi Hệ Thống'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.softRed,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: _handleLogout,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, StockFilter filter) {
+    final isSelected = _selectedFilter == filter;
+    return InkWell(
+      onTap: () => setState(() => _selectedFilter = filter),
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surfaceWarm,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWarm,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<SortOption>(
+          value: _selectedSort,
+          icon: const Icon(Icons.sort, size: 16, color: AppColors.textPrimary),
+          isDense: true,
+          style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+          onChanged: (val) {
+            if (val != null) setState(() => _selectedSort = val);
+          },
+          items: const [
+            DropdownMenuItem(value: SortOption.defaultOrder, child: Text('Sắp xếp: Mặc định')),
+            DropdownMenuItem(value: SortOption.nameAsc, child: Text('Tên: A -> Z')),
+            DropdownMenuItem(value: SortOption.nameDesc, child: Text('Tên: Z -> A')),
+            DropdownMenuItem(value: SortOption.priceAsc, child: Text('Giá: Thấp -> Cao')),
+            DropdownMenuItem(value: SortOption.priceDesc, child: Text('Giá: Cao -> Thấp')),
+            DropdownMenuItem(value: SortOption.quantityAsc, child: Text('Tồn: Ít -> Nhiều')),
+            DropdownMenuItem(value: SortOption.quantityDesc, child: Text('Tồn: Nhiều -> Ít')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.inventory_2_outlined, size: 60, color: AppColors.textMuted),
+            const SizedBox(height: 12),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'Không tìm thấy sản phẩm nào khớp với "$_searchQuery"'
+                  : 'Chưa có sản phẩm nào trong kho hàng',
+              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text('Thêm sản phẩm mới'),
+              onPressed: () => _openProductDialog(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
