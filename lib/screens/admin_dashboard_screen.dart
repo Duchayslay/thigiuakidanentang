@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/product_model.dart';
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
@@ -146,80 +145,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         );
       }
     }
-  }
-
-  /// Xuất CSDL ra JSON để nộp bài
-  void _exportDatabaseDialog(List<Product> products) {
-    final jsonStr = _productService.exportToJson(products);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.file_download_outlined, color: Colors.deepPurple),
-            SizedBox(width: 8),
-            Text('Xuất Cơ Sở Dữ Liệu (JSON)'),
-          ],
-        ),
-        content: SizedBox(
-          width: 550,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Dữ liệu JSON dưới đây CHỈ gồm 4 trường: name, price, soluong, image tuân thủ 100% yêu cầu nộp bài.',
-                style: TextStyle(fontSize: 13, color: Colors.black87),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                height: 250,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade900,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: SingleChildScrollView(
-                  child: SelectableText(
-                    jsonStr,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: Colors.greenAccent,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Đóng'),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.copy, size: 16),
-            label: const Text('Sao chép JSON'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: jsonStr));
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã sao chép chuỗi JSON vào Clipboard!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
   }
 
   /// Đăng xuất Admin
@@ -420,27 +345,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
 
-              // 3. Thanh hiển thị số lượng & Nút Xuất file CSDL JSON
+              // 3. Thanh hiển thị số lượng sản phẩm
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Hiển thị: ${displayedProducts.length} / ${allProducts.length} sản phẩm',
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
-                      ),
-                      TextButton.icon(
-                        icon: const Icon(Icons.download, size: 16),
-                        label: const Text('Xuất CSDL JSON nộp bài'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.deepPurple,
-                          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: () => _exportDatabaseDialog(allProducts),
-                      ),
-                    ],
+                  child: Text(
+                    'Hiển thị: ${displayedProducts.length} / ${allProducts.length} sản phẩm',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                   ),
                 ),
               ),
